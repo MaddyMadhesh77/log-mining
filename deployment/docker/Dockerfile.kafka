@@ -1,0 +1,10 @@
+FROM confluentinc/cp-kafka:7.0.0
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+CMD ["python", "src/ingestion/kafka_consumer.py"]
