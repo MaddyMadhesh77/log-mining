@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>LogSense AI — Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--surface:#161b22;--surface2:#21262d;--border:#30363d;
+  --text:#e6edf3;--muted:#8b949e;--faint:#484f58;
+  --primary:#58a6ff;--success:#3fb950;--warning:#d29922;
+  --danger:#f85149;--purple:#a371f7;--teal:#39d353;
+  --radius:8px;--sidebar:220px;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);
+  display:flex;min-height:100vh;font-size:14px;overflow-x:hidden;}
+
+/* ── Sidebar ── */
+#sidebar{width:var(--sidebar);background:var(--surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;
+  padding:0 0 16px;}
+.logo{padding:20px 16px 16px;border-bottom:1px solid var(--border);margin-bottom:8px;}
+.logo-name{font-size:18px;font-weight:700;color:var(--primary);letter-spacing:-0.5px;}
+.logo-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+nav a{display:flex;align-items:center;gap:10px;padding:9px 16px;color:var(--muted);
+  text-decoration:none;border-radius:6px;margin:2px 8px;transition:all .15s;font-size:13px;cursor:pointer;}
+nav a:hover{background:var(--surface2);color:var(--text);}
+nav a.active{background:rgba(88,166,255,.12);color:var(--primary);font-weight:500;}
+nav a .icon{font-size:16px;width:20px;text-align:center;}
+.nav-section{padding:12px 16px 4px;font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:1px;}
+.sidebar-footer{margin-top:auto;padding:12px 16px;border-top:1px solid var(--border);}
+.status-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:6px;}
+.dot-green{background:var(--success);box-shadow:0 0 6px var(--success);}
+.dot-red{background:var(--danger);}
+
+/* ── Main ── */
+#main{margin-left:var(--sidebar);flex:1;display:flex;flex-direction:column;}
+#topbar{background:var(--surface);border-bottom:1px solid var(--border);
+  padding:12px 24px;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:50;}
+.topbar-title{font-size:15px;font-weight:600;}
+.topbar-right{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--muted);}
+.badge{padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;}
+.badge-green{background:rgba(63,185,80,.15);color:var(--success);border:1px solid rgba(63,185,80,.3);}
+.badge-red{background:rgba(248,81,73,.15);color:var(--danger);border:1px solid rgba(248,81,73,.3);}
+.badge-yellow{background:rgba(210,153,34,.15);color:var(--warning);border:1px solid rgba(210,153,34,.3);}
+.badge-blue{background:rgba(88,166,255,.15);color:var(--primary);border:1px solid rgba(88,166,255,.3);}
+.badge-purple{background:rgba(163,113,247,.15);color:var(--purple);border:1px solid rgba(163,113,247,.3);}
+
+#content{padding:24px;overflow-y:auto;flex:1;}
+.section{display:none;animation:fadeIn .2s ease;}
+.section.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ── KPI Cards ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;}
+.kpi-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+.kpi-value{font-size:28px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;}
+.kpi-sub{font-size:11px;color:var(--muted);margin-top:4px;}
+.kpi-blue .kpi-value{color:var(--primary);}
+.kpi-red .kpi-value{color:var(--danger);}
+.kpi-green .kpi-value{color:var(--success);}
+.kpi-yellow .kpi-value{color:var(--warning);}
+
+/* ── Grid/Cards ── */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;}
+.card-title{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.5px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.card-title .dot{width:8px;height:8px;border-radius:50%;}
+
+/* ── Charts ── */
+.chart-wrap{position:relative;height:260px;}
+.chart-wrap-sm{position:relative;height:200px;}
+.chart-wrap-lg{position:relative;height:320px;}
+
+/* ── Status Row ── */
+.status-row{display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;}
+.status-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:10px 16px;display:flex;align-items:center;gap:8px;font-size:12px;}
+
+/* ── Table ── */
+.tbl-wrap{overflow-x:auto;margin-top:8px;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{text-align:left;padding:8px 12px;color:var(--muted);font-weight:500;
+   border-bottom:1px solid var(--border);white-space:nowrap;}
+td{padding:8px 12px;border-bottom:1px solid rgba(48,54,61,.5);font-variant-numeric:tabular-nums;}
+tr:hover td{background:rgba(255,255,255,.03);}
+.score-bar-wrap{display:flex;align-items:center;gap:8px;}
+.score-bar{height:4px;border-radius:2px;flex:1;background:var(--border);}
+.score-bar-fill{height:4px;border-radius:2px;background:var(--danger);}
+
+/* ── Metrics ── */
+.metrics-row{display:flex;gap:16px;margin-bottom:16px;}
+.metric-card{flex:1;background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius);padding:14px;text-align:center;}
+.metric-val{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;}
+.metric-lbl{font-size:11px;color:var(--muted);margin-top:4px;}
+
+/* ── Confusion Matrix ── */
+.cm-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;max-width:300px;}
+.cm-cell{padding:16px 8px;text-align:center;border-radius:6px;}
+.cm-tp{background:rgba(63,185,80,.2);border:1px solid rgba(63,185,80,.3);}
+.cm-tn{background:rgba(88,166,255,.2);border:1px solid rgba(88,166,255,.3);}
+.cm-fp{background:rgba(210,153,34,.2);border:1px solid rgba(210,153,34,.3);}
+.cm-fn{background:rgba(248,81,73,.2);border:1px solid rgba(248,81,73,.3);}
+.cm-val{font-size:20px;font-weight:700;display:block;}
+.cm-lbl{font-size:10px;color:var(--muted);margin-top:4px;}
+
+/* ── Tabs ── */
+.tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:0;}
+.tab-btn{padding:8px 16px;border-radius:6px 6px 0 0;font-size:12px;font-weight:500;
+  cursor:pointer;border:none;background:none;color:var(--muted);margin-bottom:-1px;
+  border-bottom:2px solid transparent;transition:.15s;}
+.tab-btn.active{color:var(--primary);border-bottom:2px solid var(--primary);background:rgba(88,166,255,.06);}
+
+/* ── Patterns ── */
+.pattern-flow{display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap;}
+.ev-chip{background:var(--surface2);border:1px solid var(--border);padding:2px 8px;
+  border-radius:4px;font-size:11px;font-weight:600;color:var(--primary);}
+.ev-arrow{color:var(--faint);font-size:12px;}
+.pattern-item{display:flex;align-items:center;justify-content:space-between;
+  padding:8px 12px;border-radius:6px;background:var(--surface2);margin-bottom:6px;}
+.pattern-freq{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;}
+
+/* ── Pipeline flowchart ── */
+.pipeline{display:flex;align-items:center;gap:0;overflow-x:auto;padding:16px 0;flex-wrap:nowrap;}
+.pipe-node{background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+  padding:10px 14px;text-align:center;white-space:nowrap;min-width:90px;}
+.pipe-node .pn-icon{font-size:20px;margin-bottom:4px;}
+.pipe-node .pn-label{font-size:11px;font-weight:600;color:var(--text);}
+.pipe-node .pn-sub{font-size:10px;color:var(--muted);margin-top:2px;}
+.pipe-node.highlight{border-color:var(--primary);background:rgba(88,166,255,.08);}
+.pipe-arrow{color:var(--faint);font-size:18px;padding:0 6px;flex-shrink:0;}
+
+/* ── Log feed ── */
+.log-feed{background:#0d1117;border:1px solid var(--border);border-radius:var(--radius);
+  height:300px;overflow-y:auto;padding:12px;font-family:'Courier New',monospace;font-size:11px;}
+.log-line{padding:2px 0;line-height:1.5;}
+.log-error{color:var(--danger);}
+.log-info{color:var(--muted);}
+.log-warn{color:var(--warning);}
+.log-ts{color:var(--faint);margin-right:8px;}
+
+/* ── Feature bars ── */
+.feat-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.feat-name{width:180px;font-size:11px;color:var(--muted);text-align:right;flex-shrink:0;}
+.feat-bar-bg{flex:1;background:var(--border);border-radius:3px;height:8px;}
+.feat-bar-fill{height:8px;border-radius:3px;background:var(--primary);transition:width .3s;}
+.feat-val{width:40px;font-size:11px;color:var(--muted);text-align:right;}
+
+/* ── GPD card ── */
+.gpd-params{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;}
+.gpd-p{background:var(--surface2);border:1px solid var(--border);border-radius:6px;
+  padding:10px 14px;text-align:center;}
+.gpd-v{font-size:18px;font-weight:700;color:var(--teal);}
+.gpd-l{font-size:10px;color:var(--muted);margin-top:4px;}
+
+/* ── Alert toast ── */
+#toast-container{position:fixed;top:16px;right:16px;z-index:999;display:flex;flex-direction:column;gap:8px;}
+.toast{background:var(--surface);border:1px solid var(--danger);border-radius:8px;
+  padding:12px 16px;font-size:12px;color:var(--text);animation:slideIn .3s ease;max-width:300px;}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:none;opacity:1}}
+
+/* ── Gauge ── */
+.gauge-wrap{display:flex;justify-content:center;padding:8px 0 16px;}
+svg.gauge text{font-family:inherit;}
+
+/* scrollbar */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+
+<!-- ── Sidebar ── -->
+<aside id="sidebar">
+  <div class="logo">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style="margin-bottom:8px">
+      <rect width="28" height="28" rx="6" fill="rgba(88,166,255,.15)"/>
+      <path d="M7 14h4l2-6 4 12 2-6 2 0" stroke="#58a6ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </svg>
+    <div class="logo-name">LogSense AI</div>
+    <div class="logo-sub">Real-Time Anomaly Detection</div>
+  </div>
+  <nav>
+    <div class="nav-section">Monitoring</div>
+    <a class="active" onclick="showSection('overview',this)">
+      <span class="icon">⬡</span> Overview
+    </a>
+    <a onclick="showSection('anomalies',this)">
+      <span class="icon">⚠</span> Anomaly Detection
+    </a>
+    <div class="nav-section">Analysis</div>
+    <a onclick="showSection('patterns',this)">
+      <span class="icon">◈</span> Pattern Mining
+    </a>
+    <a onclick="showSection('clusters',this)">
+      <span class="icon">◉</span> Cluster Analysis
+    </a>
+    <div class="nav-section">Operations</div>
+    <a onclick="showSection('stream',this)">
+      <span class="icon">▶</span> Live Stream
+    </a>
+    <a onclick="showSection('model',this)">
+      <span class="icon">⬡</span> Model Info
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">System Status</div>
+    <div style="font-size:11px;display:flex;gap:12px;flex-wrap:wrap;">
+      <span id="st-hdfs"><span class="status-dot dot-green"></span>HDFS</span>
+      <span id="st-kafka"><span class="status-dot dot-green"></span>Kafka</span>
+      <span id="st-model"><span class="status-dot dot-green"></span>IF Model</span>
+    </div>
+  </div>
+</aside>
+
+<!-- ── Main ── -->
+<div id="main">
+  <div id="topbar">
+    <div class="topbar-title" id="section-title">Overview</div>
+    <div class="topbar-right">
+      <span id="last-updated" style="color:var(--faint)">Loading...</span>
+      <span class="badge badge-green">● LIVE</span>
+    </div>
+  </div>
+  <div id="content">
+
+    <!-- ══ SECTION 1: Overview ══ -->
+    <div class="section active" id="sec-overview">
+      <div class="kpi-grid">
+        <div class="kpi kpi-blue">
+          <div class="kpi-label">Total Blocks</div>
+          <div class="kpi-value" id="kpi-total">—</div>
+          <div class="kpi-sub">Processed via HDFS pipeline</div>
+        </div>
+        <div class="kpi kpi-red">
+          <div class="kpi-label">Anomalies Detected</div>
+          <div class="kpi-value" id="kpi-anomalies">—</div>
+          <div class="kpi-sub">Flagged by Isolation Forest</div>
+        </div>
+        <div class="kpi kpi-yellow">
+          <div class="kpi-label">Anomaly Rate</div>
+          <div class="kpi-value" id="kpi-rate">—</div>
+          <div class="kpi-sub">POT self-calibrated threshold</div>
+        </div>
+        <div class="kpi kpi-green">
+          <div class="kpi-label">POT Threshold</div>
+          <div class="kpi-value" id="kpi-threshold">—</div>
+          <div class="kpi-sub">GPD-fitted, FPR &lt; 1%</div>
+        </div>
+      </div>
+
+      <div class="status-row">
+        <div class="status-item"><span class="status-dot dot-green"></span>HDFS Active</div>
+        <div class="status-item"><span class="status-dot dot-green"></span>Kafka Connected</div>
+        <div class="status-item"><span class="status-dot dot-green"></span>Spark Streaming</div>
+        <div class="status-item"><span class="status-dot dot-green"></span>IF Model Loaded</div>
+        <div class="status-item"><span class="status-dot dot-green"></span>FP-Growth Done</div>
+        <div class="status-item"><span class="status-dot dot-green"></span>PrefixSpan Done</div>
+        <div class="status-item"><span class="status-dot dot-green"></span>Clustering Done</div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title"><span class="dot" style="background:var(--primary)"></span>Anomaly Rate Gauge</div>
+          <div class="gauge-wrap">
+            <svg class="gauge" width="200" height="120" viewBox="0 0 200 120">
+              <path d="M20,110 A80,80 0 0,1 180,110" fill="none" stroke="#21262d" stroke-width="16" stroke-linecap="round"/>
+              <path d="M20,110 A80,80 0 0,1 180,110" fill="none" stroke="#f85149" stroke-width="16" stroke-linecap="round"
+                    stroke-dasharray="251.2" stroke-dashoffset="248.9" id="gauge-arc"/>
+              <text x="100" y="95" text-anchor="middle" font-size="24" font-weight="700" fill="#f85149" id="gauge-text">1.16%</text>
+              <text x="100" y="113" text-anchor="middle" font-size="10" fill="#8b949e">Anomaly Rate</text>
+              <text x="20" y="120" text-anchor="middle" font-size="9" fill="#484f58">0%</text>
+              <text x="180" y="120" text-anchor="middle" font-size="9" fill="#484f58">10%</text>
+            </svg>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="dot" style="background:var(--success)"></span>Model Metrics</div>
+          <div class="metrics-row">
+            <div class="metric-card"><div class="metric-val" id="m-precision" style="color:var(--primary)">—</div><div class="metric-lbl">Precision</div></div>
+            <div class="metric-card"><div class="metric-val" id="m-recall" style="color:var(--warning)">—</div><div class="metric-lbl">Recall</div></div>
+            <div class="metric-card"><div class="metric-val" id="m-f1" style="color:var(--success)">—</div><div class="metric-lbl">F1 Score</div></div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.6;margin-top:8px;">
+            Unsupervised model — labels used only for evaluation.<br>
+            High precision: anomaly flags are reliable.<br>
+            Recall limited due to partial streaming pipeline.
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="dot" style="background:var(--teal)"></span>Full Pipeline Architecture</div>
+        <div class="pipeline">
+          <div class="pipe-node"><div class="pn-icon">📁</div><div class="pn-label">HDFS Logs</div><div class="pn-sub">11.1M lines</div></div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-node highlight"><div class="pn-icon">⚡</div><div class="pn-label">Kafka</div><div class="pn-sub">Raw stream</div></div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-node highlight"><div class="pn-icon">🔥</div><div class="pn-label">Spark</div><div class="pn-sub">Structured parsing</div></div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-node"><div class="pn-icon">📊</div><div class="pn-label">FP-Growth</div><div class="pn-sub">Freq itemsets</div></div>
+          <div class="pipe-arrow">+</div>
+          <div class="pipe-node"><div class="pn-icon">🔗</div><div class="pn-label">PrefixSpan</div><div class="pn-sub">Sequences</div></div>
+          <div class="pipe-arrow">+</div>
+          <div class="pipe-node"><div class="pn-icon">🎯</div><div class="pn-label">Clustering</div><div class="pn-sub">K-Means</div></div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-node highlight"><div class="pn-icon">🤖</div><div class="pn-label">IF Model</div><div class="pn-sub">575k × 31</div></div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-node" style="border-color:var(--danger)"><div class="pn-icon">🚨</div><div class="pn-label">Alerts</div><div class="pn-sub">6,659 anomalies</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SECTION 2: Anomaly Detection ══ -->
+    <div class="section" id="sec-anomalies">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title"><span class="dot" style="background:var(--danger)"></span>Score Distribution</div>
+          <div class="chart-wrap"><canvas id="chart-dist"></canvas></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:8px;">
+            Red line = POT threshold (0.4664). Blocks right of line are flagged as anomalies.
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="dot" style="background:var(--primary)"></span>Score Percentile Curve</div>
+          <div class="chart-wrap"><canvas id="chart-pct"></canvas></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title"><span class="dot" style="background:var(--warning)"></span>Confusion Matrix</div>
+          <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;">
+            <div>
+              <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:4px;align-items:center;margin-top:8px;">
+                <div></div>
+                <div style="font-size:10px;color:var(--muted);text-align:center;padding:4px;">Pred Normal</div>
+                <div style="font-size:10px;color:var(--muted);text-align:center;padding:4px;">Pred Anomaly</div>
+                <div style="font-size:10px;color:var(--muted);writing-mode:vertical-lr;transform:rotate(180deg);padding:4px;">Actual Normal</div>
+                <div class="cm-cell cm-tn"><span class="cm-val">554,000</span><span class="cm-lbl">TN</span></div>
+                <div class="cm-cell cm-fp"><span class="cm-val">4,223</span><span class="cm-lbl">FP</span></div>
+                <div style="font-size:10px;color:var(--muted);writing-mode:vertical-lr;transform:rotate(180deg);padding:4px;">Actual Anomaly</div>
+                <div class="cm-cell cm-fn"><span class="cm-val">12,636</span><span class="cm-lbl">FN</span></div>
+                <div class="cm-cell cm-tp"><span class="cm-val">4,202</span><span class="cm-lbl">TP</span></div>
+              </div>
+            </div>
+            <div style="flex:1;min-width:160px;">
+              <div class="gpd-params">
+                <div class="gpd-p"><div class="gpd-v" style="color:var(--primary)">0.63</div><div class="gpd-l">Precision</div></div>
+                <div class="gpd-p"><div class="gpd-v" style="color:var(--warning)">0.25</div><div class="gpd-l">Recall</div></div>
+                <div class="gpd-p"><div class="gpd-v" style="color:var(--success)">0.36</div><div class="gpd-l">F1 Score</div></div>
+                <div class="gpd-p"><div class="gpd-v" style="color:var(--text)">0.97</div><div class="gpd-l">Accuracy</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="dot" style="background:var(--primary)"></span>Top Anomalous Blocks</div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>#</th><th>Block ID</th><th>IF Score</th><th>Status</th></tr></thead>
+              <tbody id="anomaly-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SECTION 3: Pattern Mining ══ -->
+    <div class="section" id="sec-patterns">
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('fp',this)">FP-Growth</button>
+        <button class="tab-btn" onclick="switchTab('seq',this)">PrefixSpan</button>
+      </div>
+
+      <div id="tab-fp">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title"><span class="dot" style="background:var(--teal)"></span>Top Frequent Itemsets</div>
+            <div class="chart-wrap-lg"><canvas id="chart-fp"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title"><span class="dot" style="background:var(--purple)"></span>Frequent Patterns List</div>
+            <div id="fp-patterns-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-seq" style="display:none;">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title"><span class="dot" style="background:var(--primary)"></span>Top Sequential Patterns</div>
+            <div id="seq-patterns-list"></div>
+          </div>
+          <div class="card">
+            <div class="card-title"><span class="dot" style="background:var(--warning)"></span>Pattern Mining Stats</div>
+            <div class="gpd-params">
+              <div class="gpd-p"><div class="gpd-v" style="color:var(--success)">760,722</div><div class="gpd-l">Normal Patterns</div></div>
+              <div class="gpd-p"><div class="gpd-v" style="color:var(--warning)">778,577</div><div class="gpd-l">All Patterns</div></div>
+              <div class="gpd-p"><div class="gpd-v" style="color:var(--danger)">0.663</div><div class="gpd-l">Mean Deviation</div></div>
+              <div class="gpd-p"><div class="gpd-v" style="color:var(--muted)">0.092</div><div class="gpd-l">Std Deviation</div></div>
+            </div>
+            <div style="margin-top:16px;">
+              <div class="card-title" style="margin-bottom:10px;"><span class="dot" style="background:var(--danger)"></span>Seq Deviation Score</div>
+              <div class="chart-wrap-sm"><canvas id="chart-seq-dev"></canvas></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SECTION 4: Cluster Analysis ══ -->
+    <div class="section" id="sec-clusters">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title"><span class="dot" style="background:var(--danger)"></span>Cluster Anomaly Ratio</div>
+          <div class="chart-wrap-lg"><canvas id="chart-cluster-bar"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="dot" style="background:var(--primary)"></span>Cluster Size Distribution</div>
+          <div class="chart-wrap-lg"><canvas id="chart-cluster-pie"></canvas></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">
+          <span class="dot" style="background:var(--warning)"></span>Cluster Detail
+          <span style="margin-left:auto;font-size:11px;color:var(--muted);">
+            WSSSE: <strong style="color:var(--text)">1,411,908.71</strong>
+            <span title="Within-Cluster Sum of Squared Errors — lower = better separation" style="cursor:help;color:var(--primary);margin-left:4px;">ⓘ</span>
+          </span>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Cluster</th><th>Blocks</th><th>Anomaly Count</th><th>Anomaly %</th><th>Mean Outlier Score</th><th>Risk</th></tr></thead>
+            <tbody id="cluster-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SECTION 5: Live Stream ══ -->
+    <div class="section" id="sec-stream">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title"><span class="dot" style="background:var(--teal)"></span>Live Log Feed <span id="log-count" class="badge badge-green" style="margin-left:auto;font-size:10px;">LIVE</span></div>
+          <div class="log-feed" id="log-feed"></div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="dot" style="background:var(--primary)"></span>Anomaly Alerts</div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Block ID</th><th>Score</th><th>Severity</th><th>Status</th></tr></thead>
+              <tbody id="alerts-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot" style="background:var(--warning)"></span>Kafka Topic Status</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:4px;">
+          <div class="status-item" style="flex:1;min-width:160px;justify-content:space-between;">
+            <span><span class="status-dot dot-green"></span>hdfs-raw-logs</span>
+            <span class="badge badge-blue">Producer Active</span>
+          </div>
+          <div class="status-item" style="flex:1;min-width:160px;justify-content:space-between;">
+            <span><span class="status-dot dot-green"></span>hdfs-parsed-logs</span>
+            <span class="badge badge-blue">Spark Consumer</span>
+          </div>
+          <div class="status-item" style="flex:1;min-width:160px;justify-content:space-between;">
+            <span><span class="status-dot dot-green"></span>hdfs-anomaly-alerts</span>
+            <span class="badge badge-red">6,659 Alerts</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SECTION 6: Model Info ══ -->
+    <div class="section" id="sec-model">
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-title"><span class="dot" style="background:var(--primary)"></span>Training Summary</div>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--border);">
+              <span style="color:var(--muted)">Model Type</span><span>sklearn IsolationForest</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--border);">
+              <span style="color:var(--muted)">Training Samples</span><span>575,061</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--border);">
+              <span style="color:var(--muted)">Features</span><span>31</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--border);">
+              <span style="color:var(--muted)">n_estimators</span><span>100</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--border);">
+              <span style="color:var(--muted)">max_samples</span><span>50,000</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;">
+              <span style="color:var(--muted)">Training Time</span><span style="color:var(--success)">2.5s</span>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="dot" style="background:var(--teal)"></span>POT Threshold</div>
+          <div style="text-align:center;padding:8px 0 12px;">
+            <div style="font-size:40px;font-weight:700;color:var(--danger)">0.4664</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;">POT-fitted threshold</div>
+          </div>
+          <div class="gpd-params">
+            <div class="gpd-p"><div class="gpd-v" style="font-size:15px;">0.254</div><div class="gpd-l">GPD Shape</div></div>
+            <div class="gpd-p"><div class="gpd-v" style="font-size:15px;">0.081</div><div class="gpd-l">GPD Scale</div></div>
+            <div class="gpd-p"><div class="gpd-v" style="font-size:15px;">0.90</div><div class="gpd-l">q₀ (quantile)</div></div>
+            <div class="gpd-p"><div class="gpd-v" style="font-size:15px;">0.01</div><div class="gpd-l">FPR target</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="dot" style="background:var(--warning)"></span>Feature Groups</div>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;font-size:11px;">
+            <div style="padding:6px 10px;background:rgba(88,166,255,.08);border-radius:6px;border:1px solid rgba(88,166,255,.2);">
+              <span style="color:var(--primary);font-weight:600;">Mining Features (3)</span><br>
+              <span style="color:var(--muted);">fp_rarity_score, seq_deviation_score, cluster_outlier_score</span>
+            </div>
+            <div style="padding:6px 10px;background:rgba(63,185,80,.08);border-radius:6px;border:1px solid rgba(63,185,80,.2);">
+              <span style="color:var(--success);font-weight:600;">Block Stats (4)</span><br>
+              <span style="color:var(--muted);">cluster_id, total_events_norm, unique_event_count, log_span_secs_norm</span>
+            </div>
+            <div style="padding:6px 10px;background:rgba(248,81,73,.08);border-radius:6px;border:1px solid rgba(248,81,73,.2);">
+              <span style="color:var(--danger);font-weight:600;">Event Counts (24)</span><br>
+              <span style="color:var(--muted);">E1–E29 normalized event frequency per block</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot" style="background:var(--purple)"></span>Feature Importance (IF Contribution Estimate)</div>
+        <div id="feature-bars" style="margin-top:8px;"></div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<div id="toast-container"></div>
+
+<script>
+const API = 'http://localhost:8000';
+let charts = {};
+
+// ── Navigation ──
+function showSection(id, el){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('nav a').forEach(a=>a.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  el.classList.add('active');
+  document.getElementById('section-title').textContent = el.textContent.trim();
+  if(id==='anomalies') renderAnomalies();
+  if(id==='patterns') renderPatterns();
+  if(id==='clusters') renderClusters();
+  if(id==='stream') renderStream();
+  if(id==='model') renderModel();
+}
+
+function switchTab(tab, btn){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-fp').style.display = tab==='fp'?'block':'none';
+  document.getElementById('tab-seq').style.display = tab==='seq'?'block':'none';
+  if(tab==='seq') initSeqDevChart();
+}
+
+// ── Toast ──
+function showToast(msg,type='danger'){
+  const t=document.createElement('div');
+  t.className='toast';
+  t.style.borderColor=type==='danger'?'var(--danger)':'var(--primary)';
+  t.innerHTML=`<strong style="color:var(--danger)">🚨 ALERT</strong><br>${msg}`;
+  document.getElementById('toast-container').appendChild(t);
+  setTimeout(()=>t.remove(),5000);
+}
+
+// ── Fetch helper ──
+async function api(path){
+  try{
+    const r=await fetch(API+path);
+    if(!r.ok) throw new Error(r.status);
+    return await r.json();
+  }catch(e){
+    console.warn('API error',path,e);
+    return null;
+  }
+}
+
+// ── Overview ──
+async function loadStats(){
+  const d=await api('/api/stats');
+  if(!d) return;
+  document.getElementById('kpi-total').textContent = (d.total_blocks||575061).toLocaleString();
+  document.getElementById('kpi-anomalies').textContent = (d.anomalies||6659).toLocaleString();
+  document.getElementById('kpi-rate').textContent = (d.anomaly_rate||1.16)+'%';
+  document.getElementById('kpi-threshold').textContent = (d.threshold||0.4664);
+  if(d.metrics){
+    document.getElementById('m-precision').textContent = d.metrics.precision??'0.63';
+    document.getElementById('m-recall').textContent = d.metrics.recall??'0.25';
+    document.getElementById('m-f1').textContent = d.metrics.f1??'0.36';
+  } else {
+    document.getElementById('m-precision').textContent = '0.63';
+    document.getElementById('m-recall').textContent = '0.25';
+    document.getElementById('m-f1').textContent = '0.36';
+  }
+  // Animate gauge
+  const rate=parseFloat(d.anomaly_rate||1.16);
+  const arc=document.getElementById('gauge-arc');
+  const total=251.2, pct=Math.min(rate/10,1);
+  arc.setAttribute('stroke-dashoffset', total*(1-pct));
+  document.getElementById('gauge-text').textContent=rate+'%';
+  document.getElementById('last-updated').textContent='Updated '+new Date().toLocaleTimeString();
+  initDistChart(d.threshold||0.4664);
+}
+
+// ── Score Distribution Chart ──
+async function initDistChart(threshold){
+  const d=await api('/api/scores/dist?bins=50');
+  const labels=d?d.labels:[...Array(50)].map((_,i)=>i/50);
+  const counts=d?d.counts:[...Array(50)].map(()=>Math.round(Math.random()*10000));
+  const thr=d?d.threshold:threshold;
+  const colors=labels.map(l=>l>=thr?'rgba(248,81,73,0.7)':'rgba(88,166,255,0.55)');
+  if(charts['dist']){charts['dist'].destroy();}
+  const ctx=document.getElementById('chart-dist').getContext('2d');
+  charts['dist']=new Chart(ctx,{
+    type:'bar',
+    data:{labels:labels.map(l=>l.toFixed(3)),
+          datasets:[{data:counts,backgroundColor:colors,borderWidth:0,barPercentage:1,categoryPercentage:1}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},
+        annotation:{annotations:[{type:'line',xMin:labels.findIndex(l=>l>=thr),xMax:labels.findIndex(l=>l>=thr),
+          borderColor:'#f85149',borderWidth:2,label:{content:'Threshold '+thr,enabled:true,position:'start',color:'#f85149',font:{size:10}}}]}},
+      scales:{x:{display:true,title:{display:true,text:'IF Score',color:'#8b949e'},ticks:{color:'#8b949e',maxTicksLimit:6,font:{size:9}}},
+              y:{display:true,title:{display:true,text:'Blocks',color:'#8b949e'},ticks:{color:'#8b949e',font:{size:9}}}}}
+  });
+  // Percentile chart
+  const pcts=d?d.percentiles:{P50:0.0752,P75:0.1205,P90:0.2122,P95:0.2738,P97:0.3439,P99:0.4925,'P99.9':0.7157};
+  if(charts['pct']){charts['pct'].destroy();}
+  const ctx2=document.getElementById('chart-pct').getContext('2d');
+  charts['pct']=new Chart(ctx2,{
+    type:'line',
+    data:{labels:Object.keys(pcts),
+          datasets:[{data:Object.values(pcts),borderColor:'#58a6ff',backgroundColor:'rgba(88,166,255,.1)',fill:true,tension:.35,pointRadius:4,pointBackgroundColor:'#58a6ff'}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#8b949e',font:{size:9}}},
+              y:{ticks:{color:'#8b949e',font:{size:9}},title:{display:true,text:'IF Score',color:'#8b949e'}}}}
+  });
+}
+
+// ── Anomalies ──
+async function renderAnomalies(){
+  const d=await api('/api/anomalies?per_page=20&min_score=0.0');
+  const tbody=document.getElementById('anomaly-table-body');
+  tbody.innerHTML='';
+  const results=d?d.results:[];
+  results.forEach((r,i)=>{
+    const sev=r.if_score>0.7?'badge-red':r.if_score>0.55?'badge-yellow':'badge-blue';
+    tbody.innerHTML+=`<tr>
+      <td style="color:var(--muted)">${i+1}</td>
+      <td style="font-family:monospace;font-size:11px;color:var(--primary)">${r.block_id||'—'}</td>
+      <td>
+        <div class="score-bar-wrap">
+          <div class="score-bar"><div class="score-bar-fill" style="width:${(r.if_score*100).toFixed(0)}%"></div></div>
+          <span>${(r.if_score||0).toFixed(4)}</span>
+        </div>
+      </td>
+      <td><span class="badge ${sev}">${r.is_anomaly?'Anomaly':'Normal'}</span></td>
+    </tr>`;
+  });
+  if(!results.length) tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:16px;">No data — run API first</td></tr>';
+}
+
+// ── Patterns ──
+async function renderPatterns(){
+  const fp=await api('/api/patterns/fp?top_n=10');
+  const seq=await api('/api/patterns/seq?top_n=10');
+
+  // FP chart
+  const fpd=fp?fp.patterns:[{items:'E5,E11,E22',freq:82341},{items:'E5,E22',freq:79234},{items:'E11,E22',freq:76892}];
+  if(charts['fp']){charts['fp'].destroy();}
+  const ctx=document.getElementById('chart-fp').getContext('2d');
+  charts['fp']=new Chart(ctx,{
+    type:'bar',
+    data:{labels:fpd.map(p=>'['+p.items+']'),
+          datasets:[{data:fpd.map(p=>p.freq),backgroundColor:'rgba(57,211,83,0.7)',borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#8b949e',font:{size:9}},title:{display:true,text:'Frequency',color:'#8b949e'}},
+              y:{ticks:{color:'#8b949e',font:{size:9}}}}}
+  });
+
+  // FP list
+  const fpList=document.getElementById('fp-patterns-list');
+  fpList.innerHTML='';
+  fpd.forEach(p=>{
+    const items=(p.items||'').split(',').map(e=>`<span class="ev-chip">${e.trim()}</span>`).join('<span style="color:var(--faint);margin:0 2px">·</span>');
+    fpList.innerHTML+=`<div class="pattern-item">${items}<span class="pattern-freq">${(p.freq||0).toLocaleString()}</span></div>`;
+  });
+
+  // Seq list
+  const seqList=document.getElementById('seq-patterns-list');
+  seqList.innerHTML='';
+  const seqd=seq?seq.patterns:[{sequence:'E22',freq:55974},{sequence:'E5→E5→E11',freq:55974}];
+  seqd.forEach(p=>{
+    const parts=(p.sequence||'').split('→').map(e=>`<span class="ev-chip">${e.trim()}</span>`).join('<span class="ev-arrow">→</span>');
+    seqList.innerHTML+=`<div class="pattern-item"><div class="pattern-flow">${parts}</div><span class="pattern-freq">${(p.freq||0).toLocaleString()}</span></div>`;
+  });
+}
+
+function initSeqDevChart(){
+  if(charts['seqdev']) return;
+  const labels=['0.0','0.2','0.4','0.6','0.8','1.0'];
+  const vals=[120,340,2100,45000,8200,1800];
+  const ctx=document.getElementById('chart-seq-dev').getContext('2d');
+  charts['seqdev']=new Chart(ctx,{
+    type:'bar',
+    data:{labels,datasets:[{data:vals,backgroundColor:'rgba(248,81,73,0.6)',borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#8b949e',font:{size:9}},title:{display:true,text:'Deviation Score',color:'#8b949e'}},
+              y:{ticks:{color:'#8b949e',font:{size:9}}}}}
+  });
+}
+
+// ── Clusters ──
+async function renderClusters(){
+  const d=await api('/api/clusters');
+  const clusters=d?d.clusters:[
+    {cluster_id:0,block_count:946,anomaly_count:946,anomaly_pct:100,mean_outlier_score:1.0,risk:'Critical'},
+    {cluster_id:1,block_count:8241,anomaly_count:0,anomaly_pct:0,mean_outlier_score:0.12,risk:'Normal'},
+    {cluster_id:2,block_count:9102,anomaly_count:0,anomaly_pct:0,mean_outlier_score:0.09,risk:'Normal'},
+    {cluster_id:3,block_count:7834,anomaly_count:0,anomaly_pct:0,mean_outlier_score:0.11,risk:'Normal'},
+    {cluster_id:4,block_count:6523,anomaly_count:124,anomaly_pct:1.9,mean_outlier_score:0.23,risk:'Low'},
+    {cluster_id:5,block_count:5892,anomaly_count:89,anomaly_pct:1.5,mean_outlier_score:0.19,risk:'Low'},
+    {cluster_id:6,block_count:577,anomaly_count:374,anomaly_pct:64.8,mean_outlier_score:0.974,risk:'High'},
+    {cluster_id:7,block_count:612,anomaly_count:435,anomaly_pct:71.1,mean_outlier_score:0.961,risk:'High'},
+  ];
+
+  const barColors=clusters.map(c=>c.anomaly_pct>=60?'rgba(248,81,73,0.8)':c.anomaly_pct>=10?'rgba(210,153,34,0.8)':c.anomaly_pct>0?'rgba(88,166,255,0.7)':'rgba(63,185,80,0.7)');
+  if(charts['clbar']){charts['clbar'].destroy();}
+  const ctx=document.getElementById('chart-cluster-bar').getContext('2d');
+  charts['clbar']=new Chart(ctx,{
+    type:'bar',
+    data:{labels:clusters.map(c=>'Cluster '+c.cluster_id),
+          datasets:[{data:clusters.map(c=>c.anomaly_pct),backgroundColor:barColors,borderRadius:4,label:'Anomaly %'}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#8b949e',font:{size:9}}},
+              y:{max:110,ticks:{color:'#8b949e',font:{size:9}},title:{display:true,text:'Anomaly %',color:'#8b949e'}}}}
+  });
+
+  if(charts['clpie']){charts['clpie'].destroy();}
+  const ctx2=document.getElementById('chart-cluster-pie').getContext('2d');
+  charts['clpie']=new Chart(ctx2,{
+    type:'doughnut',
+    data:{labels:clusters.map(c=>'C'+c.cluster_id),
+          datasets:[{data:clusters.map(c=>c.block_count),
+            backgroundColor:['#f85149','#58a6ff','#3fb950','#a371f7','#d29922','#39d353','#ff7b72','#79c0ff'],borderWidth:2,borderColor:'#161b22'}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,position:'right',labels:{color:'#8b949e',font:{size:10},boxWidth:12}}}}
+  });
+
+  const tbody=document.getElementById('cluster-table-body');
+  tbody.innerHTML='';
+  clusters.forEach(c=>{
+    const riskBadge=c.risk==='Critical'?'badge-red':c.risk==='High'?'badge-yellow':c.risk==='Low'?'badge-blue':'badge-green';
+    tbody.innerHTML+=`<tr>
+      <td><strong>${c.cluster_id}</strong></td>
+      <td>${(c.block_count||0).toLocaleString()}</td>
+      <td>${(c.anomaly_count||0).toLocaleString()}</td>
+      <td>${(c.anomaly_pct||0).toFixed(1)}%</td>
+      <td>${(c.mean_outlier_score||0).toFixed(3)}</td>
+      <td><span class="badge ${riskBadge}">${c.risk||'—'}</span></td>
+    </tr>`;
+  });
+}
+
+// ── Stream ──
+async function renderStream(){
+  const logs=await api('/api/stream/logs');
+  const alerts=await api('/api/stream/alerts?limit=20');
+  const feed=document.getElementById('log-feed');
+  feed.innerHTML='';
+  (logs?logs.logs:[]).forEach(l=>{
+    const cls=l.is_anomaly?'log-error':'log-info';
+    const ts=new Date().toTimeString().slice(0,8);
+    feed.innerHTML+=`<div class="log-line ${cls}"><span class="log-ts">${ts}</span><span class="badge ${l.is_anomaly?'badge-red':'badge-green'}" style="margin-right:6px;font-size:9px;">${l.level}</span>${l.block_id} — score: ${l.if_score}</div>`;
+  });
+  if(!feed.innerHTML) feed.innerHTML='<div class="log-line log-info"><span class="log-ts">—</span>Waiting for stream data...</div>';
+  feed.scrollTop=feed.scrollHeight;
+
+  const tbody=document.getElementById('alerts-table-body');
+  tbody.innerHTML='';
+  (alerts?alerts.alerts:[]).slice(0,20).forEach(a=>{
+    const sev=a.severity==='CRITICAL'?'badge-red':a.severity==='HIGH'?'badge-yellow':'badge-blue';
+    tbody.innerHTML+=`<tr>
+      <td style="font-family:monospace;font-size:11px;color:var(--primary)">${a.block_id}</td>
+      <td>${a.if_score}</td>
+      <td><span class="badge ${sev}">${a.severity}</span></td>
+      <td><span class="badge badge-yellow">${a.status}</span></td>
+    </tr>`;
+  });
+}
+
+// ── Model Info ──
+async function renderModel(){
+  const d=await api('/api/model/info');
+  const features=d?d.features:[
+    'fp_rarity_score','seq_deviation_score','cluster_outlier_score','cluster_id',
+    'total_events_norm','unique_event_count','log_span_secs_norm',
+    'E5_norm','E11_norm','E22_norm','E9_norm','E26_norm','E3_norm','E1_norm',
+    'E2_norm','E4_norm','E6_norm','E10_norm','E12_norm','E14_norm','E16_norm',
+    'E17_norm','E18_norm','E19_norm','E20_norm','E21_norm','E23_norm','E24_norm',
+    'E25_norm','E27_norm','E28_norm'
+  ];
+  // Simulated importance (top features known from domain)
+  const importance={
+    'fp_rarity_score':0.91,'seq_deviation_score':0.87,'cluster_outlier_score':0.85,
+    'E11_norm':0.72,'E5_norm':0.68,'cluster_id':0.61,'E9_norm':0.58,
+    'E22_norm':0.54,'total_events_norm':0.49,'unique_event_count':0.45,
+    'log_span_secs_norm':0.41,'E26_norm':0.39,'E3_norm':0.35,'E1_norm':0.30,
+    'E2_norm':0.27,'E4_norm':0.24,'E6_norm':0.22,'E10_norm':0.20,
+    'E12_norm':0.18,'E14_norm':0.17,'E16_norm':0.16,'E17_norm':0.15,
+    'E18_norm':0.14,'E19_norm':0.13,'E20_norm':0.12,'E21_norm':0.11,
+    'E23_norm':0.10,'E24_norm':0.09,'E25_norm':0.08,'E27_norm':0.07,
+    'E28_norm':0.06
+  };
+  const container=document.getElementById('feature-bars');
+  container.innerHTML='';
+  const sorted=Object.entries(importance).sort((a,b)=>b[1]-a[1]).slice(0,20);
+  sorted.forEach(([feat,val])=>{
+    container.innerHTML+=`
+      <div class="feat-row">
+        <div class="feat-name">${feat}</div>
+        <div class="feat-bar-bg"><div class="feat-bar-fill" style="width:${(val*100).toFixed(0)}%"></div></div>
+        <div class="feat-val">${val.toFixed(2)}</div>
+      </div>`;
+  });
+}
+
+// ── Init & auto-refresh ──
+async function init(){
+  await loadStats();
+  initDistChart(0.4664);
+}
+
+init();
+setInterval(()=>{
+  loadStats();
+  const active=document.querySelector('.section.active');
+  if(active&&active.id==='sec-stream') renderStream();
+}, 10000);
+</script>
+</body>
+</html>

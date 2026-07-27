@@ -1,0 +1,53 @@
+# 🔹 Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 🔹 Virtual Environment
+.venv/
+venv/
+env/
+
+# 🔹 Environment variables
+.env
+.env.*
+
+# 🔹 Logs
+logs/
+*.log
+
+# 🔹 OS files
+.DS_Store
+Thumbs.db
+
+# 🔹 IDEs
+.vscode/
+.idea/
+
+# 🔹 Build / dist
+build/
+dist/
+*.egg-info/
+
+# 🔹 Jupyter
+.ipynb_checkpoints/
+
+# 🔹 Cache
+.cache/
+
+# 🔹 Temporary files
+*.tmp
+*.swp
+
+# 🔹 Android / misc (optional safe ignore)
+.gradle/
+
+# Ignore data and logs
+data/
+logs/
+
+data/
+logs/
+.env
+.venv/
+__pycache__/
